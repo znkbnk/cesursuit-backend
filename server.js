@@ -11,26 +11,32 @@ connectDB();
 
 // Middleware
 const allowedOrigins = [
-  process.env.FRONTEND_URL || 'http://localhost:8080',
-  'https://your-app.netlify.app' // Add your Netlify URL as a fallback
-].filter(Boolean);
-
-app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true
-}));
+    process.env.FRONTEND_URL,
+    'https://cesursuits.netlify.app',
+    'http://localhost:5000',
+    'http://localhost:8080',
+    'http://localhost:3000',
+    'https://cesursuits-5b0aab475292.herokuapp.com'
+  ].filter(Boolean);
+  
+  app.use(cors({
+    origin: function (origin, callback) {
+      console.log('Request Origin:', origin);
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        console.warn(`Blocked by CORS: ${origin}`);
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    credentials: true
+  }));
 app.use(express.json());
 
 // Routes
 app.use('/api/suits', suitRoutes);
 
-// Health check endpoint (optional, useful for Heroku)
+// Health check endpoint
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'OK' });
 });
