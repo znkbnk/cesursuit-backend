@@ -54,17 +54,13 @@ router.get("/", async (req, res) => {
 // GET single suit by ID
 router.get("/:id", async (req, res) => {
   try {
-    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-      return res.status(400).json({ message: "Invalid suit ID format" });
-    }
-    const suit = await Suit.findOne({ _id: req.params.id });
+    const suit = await Suit.findById(req.params.id);
     if (!suit) {
       return res.status(404).json({ message: "Suit not found" });
     }
     res.json(suit);
   } catch (error) {
-    console.error(`Error fetching suit ID ${req.params.id}:`, error);
-    res.status(500).json({ message: "Server error", error: error.message });
+    res.status(500).json({ message: "Server error" });
   }
 });
 
