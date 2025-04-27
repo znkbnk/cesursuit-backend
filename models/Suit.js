@@ -8,9 +8,18 @@ const suitSchema = new mongoose.Schema({
   description: { type: String, required: true },
   stock: { type: Number, required: true },
   image: { type: String, required: true },
-  images: [{ type: String }], // Array for additional images
-  sizes: [{ type: String, enum: ['S', 'M', 'L', 'XL'] }], // Available sizes
+  images: [{ type: String }],
+  sizes: [{ type: String, enum: ['S', 'M', 'L', 'XL'] }],
   createdAt: { type: Date, default: Date.now },
+});
+
+// Add debug logging for findById
+suitSchema.post('findOne', function (doc) {
+  console.log(`findOne result: ${doc ? doc._id : 'null'}`);
+});
+
+suitSchema.post('findOneAndUpdate', function (doc) {
+  console.log(`findOneAndUpdate result: ${doc ? doc._id : 'null'}`);
 });
 
 module.exports = mongoose.model('Suit', suitSchema);
