@@ -40,27 +40,36 @@ router.get("/", async (req, res) => {
   }
 });
 
+// routes/suits.js
 router.get("/:id", async (req, res) => {
   try {
-    console.log(`Querying Suit with _id: ${req.params.id}`);
+    console.log('Received ID:', req.params.id);
+    console.log('Is valid ObjectId?', mongoose.Types.ObjectId.isValid(req.params.id));
     
-    // Validate the ID format first
-    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-      return res.status(400).json({ message: "Invalid suit ID format" });
+    // Try both findById and findOne
+    const suitById = await Suit.findById(req.params.id);
+    const suitFindOne = await Suit.findOne({ _id: req.params.id });
+    
+    console.log('findById result:', suitById);
+    console.log('findOne result:', suitFindOne);
+    
+    if (!suitFindOne) {
+      console.log('No suit found with either method');
+      return res.status(404).json({ 
+        message: "Suit not found",
+        receivedId: req.params.id,
+        isValidObjectId: mongoose.Types.ObjectId.isValid(req.params.id)
+      });
     }
-
-    const suit = await Suit.findOne({ _id: req.params.id });
     
-    if (!suit) {
-      console.log(`No suit found for _id: ${req.params.id}`);
-      return res.status(404).json({ message: "Suit not found" });
-    }
-    
-    console.log(`Found suit: ${suit.name}`);
-    res.json(suit);
+    res.json(suitFindOne);
   } catch (error) {
-    console.error(`Error fetching suit ID ${req.params.id}:`, error);
-    res.status(500).json({ message: "Server error", error: error.message });
+    console.error('Full error:', error);
+    res.status(500).json({ 
+      message: "Server error",
+      error: error.message,
+      stack: error.stack
+    });
   }
 });
 
