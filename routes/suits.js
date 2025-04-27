@@ -43,8 +43,7 @@ router.get("/", async (req, res) => {
 router.get("/:id", async (req, res) => {
   try {
     console.log(`Querying Suit with _id: ${req.params.id}`);
-    const objectId = new mongoose.Types.ObjectId(req.params.id);
-    const suit = await Suit.collection.findOne({ _id: objectId });
+    const suit = await Suit.findById(req.params.id); // Revert to findById
     if (!suit) {
       console.log(`No suit found for _id: ${req.params.id}`);
       return res.status(404).json({ message: "Suit not found" });

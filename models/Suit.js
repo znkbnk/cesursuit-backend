@@ -1,3 +1,4 @@
+// models/Suit.js
 const mongoose = require('mongoose');
 
 const suitSchema = new mongoose.Schema({
@@ -11,15 +12,6 @@ const suitSchema = new mongoose.Schema({
   images: [{ type: String }],
   sizes: [{ type: String, enum: ['S', 'M', 'L', 'XL'] }],
   createdAt: { type: Date, default: Date.now },
-});
-
-// Add debug logging for findById
-suitSchema.post('findOne', function (doc) {
-  console.log(`findOne result: ${doc ? doc._id : 'null'}`);
-});
-
-suitSchema.post('findOneAndUpdate', function (doc) {
-  console.log(`findOneAndUpdate result: ${doc ? doc._id : 'null'}`);
-});
+}, { collection: 'suits' }); // Explicitly set collection name
 
 module.exports = mongoose.model('Suit', suitSchema);
