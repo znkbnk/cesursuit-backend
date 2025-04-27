@@ -1,3 +1,4 @@
+// Updated routes/suits.js
 const express = require("express");
 const router = express.Router();
 const Suit = require("../models/Suit");
@@ -45,6 +46,19 @@ router.get("/", async (req, res) => {
       totalPages: Math.ceil(total / limit),
       currentPage: Number(page),
     });
+  } catch (error) {
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// GET single suit by ID
+router.get("/:id", async (req, res) => {
+  try {
+    const suit = await Suit.findById(req.params.id);
+    if (!suit) {
+      return res.status(404).json({ message: "Suit not found" });
+    }
+    res.json(suit);
   } catch (error) {
     res.status(500).json({ message: "Server error" });
   }

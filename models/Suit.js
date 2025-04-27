@@ -8,6 +8,8 @@ const suitSchema = new mongoose.Schema({
   description: { type: String, required: true },
   stock: { type: Number, required: true },
   image: { type: String, required: true },
+  images: [{ type: String }], // Array for additional images
+  sizes: [{ type: String, enum: ['S', 'M', 'L', 'XL'] }], // Available sizes
   createdAt: { type: Date, default: Date.now },
 });
 
