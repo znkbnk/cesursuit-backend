@@ -12,6 +12,6 @@ const suitSchema = new mongoose.Schema({
   images: [{ type: String }],
   sizes: [{ type: String, enum: ['S', 'M', 'L', 'XL'] }],
   createdAt: { type: Date, default: Date.now },
-}, { collection: 'suits' }); // Explicitly set collection name
+}, { collection: 'suits' });
 
 module.exports = mongoose.model('Suit', suitSchema);
