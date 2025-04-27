@@ -43,14 +43,19 @@ router.get("/", async (req, res) => {
 router.get("/:id", async (req, res) => {
   try {
     console.log(`Querying Suit with _id: ${req.params.id}`);
-    const objectId = new mongoose.Types.ObjectId(req.params.id);
-    const suit = await Suit.findOne({ _id: objectId }); // Use findOne with explicit ObjectId
+    
+    // Validate the ID format first
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: "Invalid suit ID format" });
+    }
+
+    const suit = await Suit.findOne({ _id: req.params.id });
+    
     if (!suit) {
       console.log(`No suit found for _id: ${req.params.id}`);
-      const allSuits = await Suit.find({}).select('_id');
-      console.log(`All suit IDs in database: ${JSON.stringify(allSuits)}`);
       return res.status(404).json({ message: "Suit not found" });
     }
+    
     console.log(`Found suit: ${suit.name}`);
     res.json(suit);
   } catch (error) {
