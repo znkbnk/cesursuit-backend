@@ -54,13 +54,17 @@ router.get("/", async (req, res) => {
 // GET single suit by ID
 router.get("/:id", async (req, res) => {
   try {
+    console.log(`Fetching suit with ID: ${req.params.id}`);
     const suit = await Suit.findById(req.params.id);
     if (!suit) {
+      console.log(`Suit not found for ID: ${req.params.id}`);
       return res.status(404).json({ message: "Suit not found" });
     }
+    console.log(`Found suit: ${suit.name}`);
     res.json(suit);
   } catch (error) {
-    res.status(500).json({ message: "Server error" });
+    console.error(`Error fetching suit ID ${req.params.id}:`, error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 });
 
