@@ -1,10 +1,10 @@
-// Updated server.js
-const express = require('express');
-const cors = require('cors');
-const suitRoutes = require('./routes/suits');
-const enquiryRoutes = require('./routes/enquiries');
-const connectDB = require('./config/db');
-require('dotenv').config();
+const express = require("express");
+const cors = require("cors");
+const suitRoutes = require("./routes/suits");
+const enquiryRoutes = require("./routes/enquiries");
+const userRoutes = require("./routes/users");
+const connectDB = require("./config/db");
+require("dotenv").config();
 
 const app = express();
 
@@ -13,33 +13,37 @@ connectDB();
 
 // Middleware
 const allowedOrigins = [
-    process.env.FRONTEND_URL,
-    'https://cesursuits.netlify.app',
-    'http://localhost:5000',
-    'http://localhost:8080',
-    'http://localhost:3000',
-    'https://cesursuits-5b0aab475292.herokuapp.com'
+  process.env.FRONTEND_URL,
+  "https://cesursuits.netlify.app",
+  "http://localhost:5000",
+  "http://localhost:8080",
+  "http://localhost:3000",
+  "https://cesursuits-5b0aab475292.herokuapp.com",
+  "https://us-central1-cesur-suits.cloudfunctions.net/testAuth",
 ].filter(Boolean);
 
-app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true
-}));
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
+  })
+);
 app.use(express.json());
 
 // Routes
-app.use('/api/suits', suitRoutes);
-app.use('/api/enquiries', enquiryRoutes);
+app.use("/api/suits", suitRoutes);
+app.use("/api/enquiries", enquiryRoutes);
+app.use("/api/users", userRoutes); // New route
 
 // Health check endpoint
-app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'OK' });
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "OK" });
 });
 
 // Start server
