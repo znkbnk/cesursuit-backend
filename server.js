@@ -27,6 +27,7 @@ app.use(cors({
   origin: [
     "https://cesursuits.netlify.app",
     "http://localhost:3000",
+    "http://localhost:8080",
     "https://cesursuits-5b0aab475292.herokuapp.com"
   ],
   credentials: true,
@@ -37,7 +38,6 @@ app.use(express.json());
 
 // Routes
 // Handle preflight requests
-app.options('*', cors());
 app.use("/api/suits", suitRoutes);
 app.use("/api/enquiries", enquiryRoutes);
 app.use("/api/users", userRoutes); // New route
