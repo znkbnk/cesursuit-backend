@@ -27,7 +27,7 @@ router.get("/pending", async (req, res) => {
         users.push(userData);
       } catch (error) {
         if (error.code === "auth/user-not-found") {
-          await docSnap.ref.delete(); // Clean up if user doesn't exist in Auth
+          await docSnap.ref.delete();
         }
       }
     }

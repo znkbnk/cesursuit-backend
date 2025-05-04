@@ -5,3 +5,6 @@ backemd/.env
 src/.env.env
 routes/cesur-suits-firebase-adminsdk-fbsvc-e950b97d5b.json
 routes/serviceAccountKey.json
+routes/setAdmin.js
+.gitignore
+.gitignore
