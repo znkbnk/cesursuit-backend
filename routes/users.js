@@ -1,7 +1,6 @@
 const express = require("express");
 const admin = require("firebase-admin");
 const router = express.Router();
-const serviceAccount = require("./serviceAccountKey.json");
 
 // Initialize Firebase Admin if not already
 if (!admin.apps.length) {
