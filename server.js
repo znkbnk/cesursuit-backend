@@ -2,7 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const suitRoutes = require("./routes/suits");
 const enquiryRoutes = require("./routes/enquiries");
-const userRoutes = require("./routes/users"); 
+const userRoutes = require("./routes/users");
 const connectDB = require("./config/db");
 require("dotenv").config();
 
@@ -19,7 +19,7 @@ const allowedOrigins = [
   "http://localhost:8080",
   "http://localhost:3000",
   "https://cesursuits-5b0aab475292.herokuapp.com",
-  "https://us-central1-cesur-suits.cloudfunctions.net/testAuth"
+  "https://us-central1-cesur-suits.cloudfunctions.net/testAuth",
 ].filter(Boolean);
 
 app.use(
