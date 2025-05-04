@@ -22,21 +22,22 @@ const allowedOrigins = [
   "https://us-central1-cesur-suits.cloudfunctions.net/testAuth",
 ].filter(Boolean);
 
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
-    credentials: true,
-  })
-);
+// Replace your current CORS middleware with this:
+app.use(cors({
+  origin: [
+    "https://cesursuits.netlify.app",
+    "http://localhost:3000",
+    "https://cesursuits-5b0aab475292.herokuapp.com"
+  ],
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+}));
 app.use(express.json());
 
 // Routes
+// Handle preflight requests
+app.options('*', cors());
 app.use("/api/suits", suitRoutes);
 app.use("/api/enquiries", enquiryRoutes);
 app.use("/api/users", userRoutes); // New route
