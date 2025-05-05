@@ -22,7 +22,6 @@ const allowedOrigins = [
   "https://us-central1-cesur-suits.cloudfunctions.net/testAuth",
 ].filter(Boolean);
 
-// Replace your current CORS middleware with this:
 app.use(cors({
   origin: [
     "https://cesursuits.netlify.app",
@@ -37,10 +36,9 @@ app.use(cors({
 app.use(express.json());
 
 // Routes
-// Handle preflight requests
 app.use("/api/suits", suitRoutes);
 app.use("/api/enquiries", enquiryRoutes);
-app.use("/api/users", userRoutes); // New route
+app.use("/api/users", userRoutes);
 
 // Health check endpoint
 app.get("/health", (req, res) => {

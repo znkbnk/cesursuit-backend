@@ -21,4 +21,29 @@ router.post("/", async (req, res) => {
   }
 });
 
+router.post("/newsletter", async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+
+    // Check if email already exists
+    const existingSubscriber = await Newsletter.findOne({ email });
+    if (existingSubscriber) {
+      return res.status(400).json({ message: "This email is already subscribed" });
+    }
+
+    const subscriber = new Newsletter({ email });
+    await subscriber.save();
+    res.status(201).json({ message: "Subscribed successfully" });
+  } catch (error) {
+    if (error.code === 11000) {
+      res.status(400).json({ message: "This email is already subscribed" });
+    } else {
+      res.status(500).json({ message: "Server error" });
+    }
+  }
+});
+
 module.exports = router;
