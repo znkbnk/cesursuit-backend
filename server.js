@@ -5,6 +5,7 @@ const suitRoutes = require("./routes/suits");
 const enquiryRoutes = require("./routes/enquiries");
 const userRoutes = require("./routes/users");
 const connectDB = require("./config/db");
+const path = require("path");
 
 const app = express();
 
@@ -34,6 +35,9 @@ app.use(cors({
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
 app.use(express.json());
+
+// Serve static files from Uploads directory
+app.use("/Uploads", express.static(path.join(__dirname, "Uploads")));
 
 // Routes
 app.use("/api/suits", suitRoutes);
