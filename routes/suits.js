@@ -81,64 +81,86 @@ router.get("/:id", async (req, res) => {
 });
 
 // POST create new suit
-router.post(
-  "/",
-  upload.fields([
-    { name: "mainImage", maxCount: 1 },
-    { name: "secondaryImages", maxCount: 3 },
-  ]),
-  async (req, res) => {
-    try {
-      const { name, price, fabric, style, description, stock, sizes } = req.body;
+router.post("/", upload.fields([
+  { name: "mainImage", maxCount: 1 },
+  { name: "secondaryImages", maxCount: 3 }
+]), async (req, res) => {
+  try {
+    const { name, price, fabric, style, description, stock, sizeInventory } = req.body;
 
-      // Validate required fields
-      if (!name || !price || !fabric || !style || !description || !stock || !req.files.mainImage) {
-        return res.status(400).json({ message: "All required fields must be provided" });
-      }
-
-      // Parse sizes
-      const sizesArray = Array.isArray(sizes) ? sizes : JSON.parse(sizes);
-
-      // Validate sizes
-      const validSizes = ["S", "M", "L", "XL"];
-      if (!sizesArray.every((size) => validSizes.includes(size))) {
-        return res.status(400).json({ message: "Invalid size provided" });
-      }
-
-      // Convert main image to Base64
-      const mainImageBase64 = req.files.mainImage[0].buffer.toString("base64");
-      const mainImageMimeType = req.files.mainImage[0].mimetype;
-      const mainImageDataUrl = `data:${mainImageMimeType};base64,${mainImageBase64}`;
-
-      // Convert secondary images to Base64
-      const secondaryImageDataUrls = req.files.secondaryImages
-        ? req.files.secondaryImages.map((file) => {
-            const base64 = file.buffer.toString("base64");
-            const mimeType = file.mimetype;
-            return `data:${mimeType};base64,${base64}`;
-          })
-        : [];
-
-      // Create new suit
-      const suit = new Suit({
-        name,
-        price: Number(price),
-        fabric,
-        style,
-        description,
-        stock: Number(stock),
-        image: mainImageDataUrl,
-        images: secondaryImageDataUrls,
-        sizes: sizesArray,
-      });
-
-      await suit.save();
-      res.status(201).json({ message: "Product added successfully", suit });
-    } catch (error) {
-      console.error("Product creation error:", error);
-      res.status(500).json({ message: "Server error", error: error.message });
+    // Basic validation
+    if (!name || !price || !fabric || !style || !description || !stock) {
+      return res.status(400).json({ message: "All required fields must be provided" });
     }
+
+    // Validate mainImage
+    if (!req.files || !req.files.mainImage || !req.files.mainImage[0]) {
+      return res.status(400).json({ message: "Main image is required" });
+    }
+
+    const parsedStock = parseInt(stock);
+    if (parsedStock <= 0 && style !== "Accessories") {
+      return res.status(400).json({ message: "Total stock must be greater than 0 for non-Accessories" });
+    }
+
+    // Parse sizeInventory if provided
+    let parsedSizeInventory = [];
+    if (sizeInventory) {
+      try {
+        parsedSizeInventory = JSON.parse(sizeInventory);
+        if (!Array.isArray(parsedSizeInventory)) {
+          return res.status(400).json({ message: "sizeInventory must be an array" });
+        }
+      } catch (error) {
+        return res.status(400).json({ message: "Invalid sizeInventory format" });
+      }
+    }
+
+    // Validate sizeInventory entries and total stock
+    if (parsedSizeInventory.length > 0) {
+      const totalSizeQuantity = parsedSizeInventory.reduce((sum, item) => sum + (item.quantity || 0), 0);
+      if (totalSizeQuantity !== parsedStock) {
+        return res.status(400).json({ message: "Total stock must equal the sum of size inventory quantities" });
+      }
+      for (const item of parsedSizeInventory) {
+        if (!item.size || item.quantity === undefined || item.quantity < 0) {
+          return res.status(400).json({ message: "Each sizeInventory entry must have a valid size and non-negative quantity" });
+        }
+      }
+    } else if (style !== "Accessories" && parsedStock > 0) {
+      return res.status(400).json({ message: "Size inventory is required when stock is greater than 0 for non-Accessories" });
+    }
+
+    // Convert main image to base64
+    const mainImageFile = req.files.mainImage[0];
+    const mainImageBase64 = `data:${mainImageFile.mimetype};base64,${mainImageFile.buffer.toString('base64')}`;
+
+    // Convert secondary images to base64 (if provided)
+    const secondaryImages = req.files.secondaryImages
+      ? req.files.secondaryImages.map(file => `data:${file.mimetype};base64,${file.buffer.toString('base64')}`)
+      : [];
+
+    console.log("Main Image Base64 (first 100 chars):", mainImageBase64.substring(0, 100));
+    console.log("Secondary Images Count:", secondaryImages.length);
+
+    const suit = new Suit({
+      name,
+      price: parseFloat(price),
+      fabric,
+      style,
+      description,
+      stock: parsedStock,
+      image: mainImageBase64,
+      images: secondaryImages,
+      sizeInventory: parsedSizeInventory,
+    });
+
+    await suit.save();
+    res.status(201).json({ message: "Product added successfully", suit });
+  } catch (error) {
+    console.error("Error adding product:", error);
+    res.status(500).json({ message: "Server error" });
   }
-);
+});
 
 module.exports = router;

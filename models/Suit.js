@@ -26,17 +26,24 @@ const suitSchema = new mongoose.Schema({
     required: true,
   },
   image: {
-    type: String, // Store main image as Base64 string
+    type: String, 
     required: true,
   },
   images: {
-    type: [String], // Store secondary images as array of Base64 strings
+    type: [String], 
     default: [],
   },
-  sizes: {
-    type: [String],
-    required: true,
-  },
+  sizeInventory: [{
+    size: {
+      type: String,
+      required: true,
+    },
+    quantity: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+  }],
   createdAt: {
     type: Date,
     default: Date.now,
