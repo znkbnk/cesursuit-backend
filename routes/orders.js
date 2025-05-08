@@ -88,11 +88,16 @@ router.post("/", verifyAuth, async (req, res) => {
 
     // Create order
     const userRecord = await admin.auth().getUser(userId);
+    const userDoc = await admin.firestore().collection("users").doc(userId).get();
+    const userData = userDoc.exists ? userDoc.data() : {};
+
     const order = new Order({
       user: {
         uid: userId,
         email: userRecord.email,
         displayName: userRecord.displayName,
+        companyName: userData.companyName || "",
+        mobileNumber: userData.mobileNumber || "",
       },
       items: items.map((item) => ({
         suit: item.suitId,
