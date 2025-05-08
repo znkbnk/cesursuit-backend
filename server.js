@@ -4,6 +4,7 @@ const cors = require("cors");
 const suitRoutes = require("./routes/suits");
 const enquiryRoutes = require("./routes/enquiries");
 const userRoutes = require("./routes/users");
+const orderRoutes = require("./routes/orders");
 const connectDB = require("./config/db");
 const path = require("path");
 
@@ -43,6 +44,7 @@ app.use("/Uploads", express.static(path.join(__dirname, "Uploads")));
 app.use("/api/suits", suitRoutes);
 app.use("/api/enquiries", enquiryRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/orders", orderRoutes);
 
 // Health check endpoint
 app.get("/health", (req, res) => {
