@@ -24,17 +24,15 @@ const allowedOrigins = [
   "https://us-central1-cesur-suits.cloudfunctions.net/testAuth",
 ].filter(Boolean);
 
-app.use(cors({
-  origin: [
-    "https://cesursuits.netlify.app",
-    "http://localhost:3000",
-    "http://localhost:8080",
-    "https://cesursuits-5b0aab475292.herokuapp.com"
-  ],
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"]
-}));
+app.use(
+  cors({
+    origin: allowedOrigins,
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
+
 app.use(express.json());
 
 // Serve static files from Uploads directory
