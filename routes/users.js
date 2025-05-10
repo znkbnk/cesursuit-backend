@@ -41,24 +41,51 @@ router.get("/pending", async (req, res) => {
   }
 });
 
+// GET approved users
+router.get("/approved", async (req, res) => {
+  console.log("Received request to /approved");
+  try {
+    const querySnapshot = await db.collection("users").where("status", "==", "approved").get();
+    const users = [];
+
+    for (const docSnap of querySnapshot.docs) {
+      const userData = { id: docSnap.id, ...docSnap.data() };
+      try {
+        await admin.auth().getUser(userData.uid);
+        users.push(userData);
+      } catch (error) {
+        if (error.code === "auth/user-not-found") {
+          await docSnap.ref.delete();
+        }
+      }
+    }
+
+    res.status(200).json(users);
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+});
+
 // POST approve user
 router.post("/approve/:uid", async (req, res) => {
   try {
     const { uid } = req.params;
-    const { email, displayName, createdAt } = req.body;
+    const { email, displayName, createdAt, companyName, mobileNumber } = req.body;
 
-    if (!email) {
-      return res.status(400).json({ message: "Missing required field: email" });
+    if (!email || !companyName) {
+      return res.status(400).json({ message: "Missing required fields: email and companyName" });
     }
 
     // Enable user in Firebase Auth
     await admin.auth().updateUser(uid, { disabled: false });
 
-    // Create user document in "users" collection (triggers email function)
+    // Create user document in "users" collection
     await db.collection("users").doc(uid).set({
       uid,
       email,
       displayName: displayName || "",
+      companyName: companyName || "",
+      mobileNumber: mobileNumber || "",
       status: "approved",
       approvedAt: new Date().toISOString(),
       createdAt: createdAt || new Date().toISOString(),

@@ -29,7 +29,9 @@ const verifyAuth = async (req, res, next) => {
 const verifyAdmin = async (req, res, next) => {
   try {
     const user = await admin.auth().getUser(req.user.uid);
-    const isAdmin = user.customClaims?.admin && user.email === "zenikibeniki@gmail.com";
+    const isAdmin =
+  user.customClaims?.admin &&
+  ["zenikibeniki@gmail.com", "cesurgroupuk@gmail.com"].includes(user.email);
     if (!isAdmin) {
       return res.status(403).json({ message: "Admin access required" });
     }
