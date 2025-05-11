@@ -2,6 +2,8 @@ const express = require("express");
 const router = express.Router();
 const Suit = require("../models/Suit");
 const multer = require("multer");
+const { verifyAuth, verifyAdmin } = require("../middleware/auth");
+
 
 // Configure multer for memory storage
 const storage = multer.memoryStorage();
@@ -82,9 +84,11 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// POST create new suit
+// POST create new suit (admin only)
 router.post(
   "/",
+  verifyAuth,
+  verifyAdmin,
   upload.fields([
     { name: "mainImage", maxCount: 1 },
     { name: "secondaryImages", maxCount: 3 },
@@ -205,5 +209,70 @@ router.post(
     }
   }
 );
+
+// PATCH update suit sizeInventory and stock (admin only)
+router.patch("/:id", verifyAuth, verifyAdmin, async (req, res) => {
+  try {
+    const { sizeInventory, stock } = req.body;
+
+    if (!sizeInventory || !Array.isArray(sizeInventory)) {
+      return res
+        .status(400)
+        .json({ message: "sizeInventory must be an array" });
+    }
+
+    // Validate sizeInventory entries
+    for (const item of sizeInventory) {
+      if (!item.size || item.quantity === undefined || item.quantity < 0) {
+         return res
+          .status(400)
+          .json({ message: "Invalid sizeInventory entry" });
+      }
+    }
+
+    const totalSizeQuantity = sizeInventory.reduce(
+      (sum, item) => sum + item.quantity,
+      0
+    );
+    if (stock !== totalSizeQuantity) {
+      return res
+        .status(400)
+        .json({
+          message:
+            "Total stock must equal the sum of size inventory quantities",
+        });
+    }
+
+    const suit = await Suit.findById(req.params.id);
+    if (!suit) {
+      return res.status(404).json({ message: "Suit not found" });
+    }
+
+    suit.sizeInventory = sizeInventory;
+    suit.stock = stock;
+    await suit.save();
+
+    res.status(200).json({ message: "Suit updated successfully", suit });
+  } catch (error) {
+    console.error("Error updating suit:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// DELETE a suit (admin only)
+router.delete("/:id", verifyAuth, verifyAdmin, async (req, res) => {
+  try {
+    const suit = await Suit.findById(req.params.id);
+    if (!suit) {
+      return res.status(404).json({ message: "Suit not found" });
+    }
+
+    await Suit.deleteOne({ _id: req.params.id });
+    res.status(200).json({ message: "Suit deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting suit:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
 
 module.exports = router;
