@@ -4,7 +4,6 @@ const Suit = require("../models/Suit");
 const multer = require("multer");
 const { verifyAuth, verifyAdmin } = require("../middleware/auth");
 
-
 // Configure multer for memory storage
 const storage = multer.memoryStorage();
 const upload = multer({
@@ -95,14 +94,20 @@ router.post(
   ]),
   async (req, res) => {
     try {
-      const { name, price, fabric, style, description, stock, sizeInventory } =
+      const { name, sku, price, fabric, style, description, stock, sizeInventory } =
         req.body;
 
       // Basic validation
-      if (!name || !price || !fabric || !style || !description || !stock) {
+      if (!name || !sku || !price || !fabric || !style || !description || !stock) {
         return res
           .status(400)
           .json({ message: "All required fields must be provided" });
+      }
+
+      // Check if SKU is unique
+      const existingSuit = await Suit.findOne({ sku });
+      if (existingSuit) {
+        return res.status(400).json({ message: "SKU must be unique" });
       }
 
       // Validate mainImage
@@ -183,14 +188,9 @@ router.post(
           )
         : [];
 
-      console.log(
-        "Main Image Base64 (first 100 chars):",
-        mainImageBase64.substring(0, 100)
-      );
-      console.log("Secondary Images Count:", secondaryImages.length);
-
       const suit = new Suit({
         name,
+        sku,
         price: parseFloat(price),
         fabric,
         style,

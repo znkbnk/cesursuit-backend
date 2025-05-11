@@ -105,7 +105,7 @@ router.post("/newsletter/campaign", async (req, res) => {
     const emailPromises = subscribers.map((sub) => {
       const emailContent = {
         to: sub.email,
-        from: "zenikibeniki@gmail.com",
+        from: "cesurgroupuk@gmail.com",
         subject: sanitizedSubject,
         text: `
           ${sanitizedSubject}
@@ -205,7 +205,7 @@ router.post("/newsletter/unsubscribe", async (req, res) => {
     // Send confirmation email
     const confirmationEmail = {
       to: normalizedEmail,
-      from: "zenikibeniki@gmail.com",
+      from: "cesurgroupuk@gmail.com",
       subject: "Unsubscribe Confirmation",
       text: `
         You have been unsubscribed from Cesur Suits newsletters.
