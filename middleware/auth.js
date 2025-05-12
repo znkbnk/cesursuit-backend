@@ -4,7 +4,7 @@ const admin = require("firebase-admin");
 const verifyAuth = async (req, res, next) => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return res.status(401).json({ message: "Unauthorized" });
+    return res.status(401).json({ message: "Please Login" });
   }
 
   const idToken = authHeader.split("Bearer ")[1];
@@ -14,7 +14,7 @@ const verifyAuth = async (req, res, next) => {
     next();
   } catch (error) {
     console.error("Auth verification error:", error);
-    res.status(401).json({ message: "Unauthorized" });
+    res.status(401).json({ message: "Please Login" });
   }
 };
 

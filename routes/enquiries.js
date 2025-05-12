@@ -4,6 +4,8 @@ const Enquiry = require("../models/Enquiry");
 const Newsletter = require("../models/Newsletter");
 const NewsletterCampaign = require("../models/NewsletterCampaignSchema");
 const sgMail = require("@sendgrid/mail");
+const { verifyAuth, verifyAdmin } = require("../middleware/auth");
+
 
 // Set SendGrid API key
 if (!process.env.SENDGRID_API_KEY) {
@@ -31,7 +33,7 @@ router.post("/", async (req, res) => {
 });
 
 // POST newsletter subscription
-router.post("/newsletter", async (req, res) => {
+router.post("/newsletter",verifyAuth, async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) {
