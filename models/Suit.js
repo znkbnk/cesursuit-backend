@@ -13,9 +13,11 @@ const suitSchema = new mongoose.Schema({
   },
   price: {
     type: Number,
-    required: true,
+    required: function () {
+      return !this.isComingSoon; // Price is required only if isComingSoon is false
+    },
   },
-  fabric: {
+  fit: {
     type: String,
     required: true,
   },
@@ -30,26 +32,33 @@ const suitSchema = new mongoose.Schema({
   stock: {
     type: Number,
     required: true,
+    default: 0, // Default to 0 for new products
   },
   image: {
-    type: String, 
+    type: String,
     required: true,
   },
   images: {
-    type: [String], 
+    type: [String],
     default: [],
   },
-  sizeInventory: [{
-    size: {
-      type: String,
-      required: true,
+  sizeInventory: [
+    {
+      size: {
+        type: String,
+        required: true,
+      },
+      quantity: {
+        type: Number,
+        required: true,
+        min: 0,
+      },
     },
-    quantity: {
-      type: Number,
-      required: true,
-      min: 0,
-    },
-  }],
+  ],
+  isComingSoon: {
+    type: Boolean,
+    default: false, // Default to false (normal product)
+  },
   createdAt: {
     type: Date,
     default: Date.now,

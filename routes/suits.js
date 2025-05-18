@@ -26,7 +26,7 @@ const upload = multer({
 router.get("/", async (req, res) => {
   try {
     const {
-      fabric,
+      fit,
       style,
       minPrice,
       maxPrice,
@@ -37,7 +37,7 @@ router.get("/", async (req, res) => {
 
     // Build query
     const query = {};
-    if (fabric) query.fabric = { $regex: fabric, $options: "i" };
+    if (fit) query.fit = { $regex: fit, $options: "i" };
     if (style) query.style = style;
     if (minPrice || maxPrice) {
       query.price = {};
@@ -94,11 +94,20 @@ router.post(
   ]),
   async (req, res) => {
     try {
-      const { name, sku, price, fabric, style, description, stock, sizeInventory } =
-        req.body;
+      const {
+        name,
+        sku,
+        price,
+        fit,
+        style,
+        description,
+        stock,
+        sizeInventory,
+        isComingSoon,
+      } = req.body;
 
       // Basic validation
-      if (!name || !sku || !price || !fabric || !style || !description || !stock) {
+      if (!name || !sku || !fit || !style || !description) {
         return res
           .status(400)
           .json({ message: "All required fields must be provided" });
@@ -115,63 +124,79 @@ router.post(
         return res.status(400).json({ message: "Main image is required" });
       }
 
-      const parsedStock = parseInt(stock);
-      if (parsedStock <= 0 && style !== "Accessories") {
-        return res
-          .status(400)
-          .json({
+      const isComingSoonBool = isComingSoon === "true" || isComingSoon === true;
+
+      // Validate price and stock for non-Coming Soon products
+      if (!isComingSoonBool) {
+        if (!price || isNaN(price) || Number(price) <= 0) {
+          return res.status(400).json({ message: "Valid price is required" });
+        }
+        const parsedStock = parseInt(stock) || 0;
+        if (parsedStock <= 0 && style !== "Accessories") {
+          return res.status(400).json({
             message: "Total stock must be greater than 0 for non-Accessories",
           });
-      }
+        }
 
-      // Parse sizeInventory if provided
-      let parsedSizeInventory = [];
-      if (sizeInventory) {
-        try {
-          parsedSizeInventory = JSON.parse(sizeInventory);
-          if (!Array.isArray(parsedSizeInventory)) {
+        // Parse and validate sizeInventory if provided
+        let parsedSizeInventory = [];
+        if (sizeInventory) {
+          try {
+            parsedSizeInventory = JSON.parse(sizeInventory);
+            if (!Array.isArray(parsedSizeInventory)) {
+              return res
+                .status(400)
+                .json({ message: "sizeInventory must be an array" });
+            }
+          } catch (error) {
             return res
               .status(400)
-              .json({ message: "sizeInventory must be an array" });
+              .json({ message: "Invalid sizeInventory format" });
           }
-        } catch (error) {
-          return res
-            .status(400)
-            .json({ message: "Invalid sizeInventory format" });
         }
-      }
 
-      // Validate sizeInventory entries and total stock
-      if (parsedSizeInventory.length > 0) {
-        const totalSizeQuantity = parsedSizeInventory.reduce(
-          (sum, item) => sum + (item.quantity || 0),
-          0
-        );
-        if (totalSizeQuantity !== parsedStock) {
-          return res
-            .status(400)
-            .json({
+        // Validate sizeInventory entries and total stock
+        if (parsedSizeInventory.length > 0) {
+          const totalSizeQuantity = parsedSizeInventory.reduce(
+            (sum, item) => sum + (item.quantity || 0),
+            0
+          );
+          if (totalSizeQuantity !== parsedStock) {
+            return res.status(400).json({
               message:
                 "Total stock must equal the sum of size inventory quantities",
             });
-        }
-        for (const item of parsedSizeInventory) {
-          if (!item.size || item.quantity === undefined || item.quantity < 0) {
-            return res
-              .status(400)
-              .json({
+          }
+          for (const item of parsedSizeInventory) {
+            if (
+              !item.size ||
+              item.quantity === undefined ||
+              item.quantity < 0
+            ) {
+              return res.status(400).json({
                 message:
                   "Each sizeInventory entry must have a valid size and non-negative quantity",
               });
+            }
           }
-        }
-      } else if (style !== "Accessories" && parsedStock > 0) {
-        return res
-          .status(400)
-          .json({
+        } else if (style !== "Accessories" && parsedStock > 0) {
+          return res.status(400).json({
             message:
               "Size inventory is required when stock is greater than 0 for non-Accessories",
           });
+        }
+      } else {
+        // For Coming Soon products, ensure stock is 0 and sizeInventory is empty
+        if (stock && parseInt(stock) !== 0) {
+          return res
+            .status(400)
+            .json({ message: "Coming Soon products must have 0 stock" });
+        }
+        if (sizeInventory && JSON.parse(sizeInventory).length > 0) {
+          return res.status(400).json({
+            message: "Coming Soon products cannot have size inventory",
+          });
+        }
       }
 
       // Convert main image to base64
@@ -191,14 +216,15 @@ router.post(
       const suit = new Suit({
         name,
         sku,
-        price: parseFloat(price),
-        fabric,
+        price: isComingSoonBool ? null : parseFloat(price),
+        fit,
         style,
         description,
-        stock: parsedStock,
+        stock: isComingSoonBool ? 0 : parseInt(stock) || 0,
         image: mainImageBase64,
         images: secondaryImages,
-        sizeInventory: parsedSizeInventory,
+        sizeInventory: isComingSoonBool ? [] : JSON.parse(sizeInventory) || [],
+        isComingSoon: isComingSoonBool,
       });
 
       await suit.save();
@@ -211,36 +237,65 @@ router.post(
 );
 
 // PATCH update suit sizeInventory and stock (admin only)
+// PATCH update suit sizeInventory and stock (admin only)
 router.patch("/:id", verifyAuth, verifyAdmin, async (req, res) => {
   try {
-    const { sizeInventory, stock } = req.body;
+    const { sizeInventory, stock, price, isComingSoon } = req.body;
 
-    if (!sizeInventory || !Array.isArray(sizeInventory)) {
+    // Validate inputs
+    if (sizeInventory && !Array.isArray(sizeInventory)) {
       return res
         .status(400)
         .json({ message: "sizeInventory must be an array" });
     }
 
-    // Validate sizeInventory entries
-    for (const item of sizeInventory) {
-      if (!item.size || item.quantity === undefined || item.quantity < 0) {
-         return res
-          .status(400)
-          .json({ message: "Invalid sizeInventory entry" });
-      }
-    }
+    const isComingSoonBool = isComingSoon === "true" || isComingSoon === true;
 
-    const totalSizeQuantity = sizeInventory.reduce(
-      (sum, item) => sum + item.quantity,
-      0
-    );
-    if (stock !== totalSizeQuantity) {
-      return res
-        .status(400)
-        .json({
-          message:
-            "Total stock must equal the sum of size inventory quantities",
-        });
+    if (!isComingSoonBool) {
+      // Validate for non-Coming Soon products
+      if (
+        price === undefined ||
+        price === null ||
+        isNaN(price) ||
+        Number(price) <= 0
+      ) {
+        return res
+          .status(400)
+          .json({ message: "Valid price is required for active products" });
+      }
+
+      if (sizeInventory) {
+        for (const item of sizeInventory) {
+          if (!item.size || item.quantity === undefined || item.quantity < 0) {
+            return res
+              .status(400)
+              .json({ message: "Invalid sizeInventory entry" });
+          }
+        }
+
+        const totalSizeQuantity = sizeInventory.reduce(
+          (sum, item) => sum + item.quantity,
+          0
+        );
+        if (stock !== totalSizeQuantity) {
+          return res.status(400).json({
+            message:
+              "Total stock must equal the sum of size inventory quantities",
+          });
+        }
+      }
+    } else {
+      // For Coming Soon products, ensure stock is 0 and sizeInventory is empty
+      if (stock && parseInt(stock) !== 0) {
+        return res
+          .status(400)
+          .json({ message: "Coming Soon products must have 0 stock" });
+      }
+      if (sizeInventory && sizeInventory.length > 0) {
+        return res
+          .status(400)
+          .json({ message: "Coming Soon products cannot have size inventory" });
+      }
     }
 
     const suit = await Suit.findById(req.params.id);
@@ -248,9 +303,19 @@ router.patch("/:id", verifyAuth, verifyAdmin, async (req, res) => {
       return res.status(404).json({ message: "Suit not found" });
     }
 
-    suit.sizeInventory = sizeInventory;
-    suit.stock = stock;
-    await suit.save();
+    // Update fields
+    suit.sizeInventory = isComingSoonBool
+      ? []
+      : sizeInventory || suit.sizeInventory;
+    suit.stock = isComingSoonBool
+      ? 0
+      : stock !== undefined
+      ? stock
+      : suit.stock;
+    suit.price = isComingSoonBool ? null : parseFloat(price);
+    suit.isComingSoon = isComingSoonBool;
+
+    await suit.save({ runValidators: true });
 
     res.status(200).json({ message: "Suit updated successfully", suit });
   } catch (error) {
