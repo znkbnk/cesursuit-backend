@@ -14,7 +14,7 @@ const suitSchema = new mongoose.Schema({
   price: {
     type: Number,
     required: function () {
-      return !this.isComingSoon; // Price is required only if isComingSoon is false
+      return !this.isComingSoon; 
     },
   },
   fit: {
@@ -64,5 +64,11 @@ const suitSchema = new mongoose.Schema({
     default: Date.now,
   },
 });
+
+suitSchema.index({ name: 1 });        // For name sorting
+suitSchema.index({ price: 1 });       // For price sorting
+suitSchema.index({ fit: 1 });         // For fit filtering
+suitSchema.index({ style: 1 });       // For style filtering
+suitSchema.index({ isComingSoon: 1 }); // For coming soon filtering
 
 module.exports = mongoose.model("Suit", suitSchema);

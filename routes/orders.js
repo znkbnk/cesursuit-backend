@@ -8,7 +8,6 @@ const pdfkit = require("pdfkit");
 const mongoose = require("mongoose");
 const { verifyAuth, verifyAdmin } = require("../middleware/auth");
 
-
 // Email transporter setup
 const transporter = nodemailer.createTransport({
   service: "gmail",
@@ -39,7 +38,9 @@ router.post("/", verifyAuth, async (req, res) => {
       if (!suit) {
         await session.abortTransaction();
         session.endSession();
-        return res.status(404).json({ message: `Suit ${item.suitId} not found` });
+        return res
+          .status(404)
+          .json({ message: `Suit ${item.suitId} not found` });
       }
 
       const sizeInventoryItem = suit.sizeInventory.find(
@@ -55,10 +56,7 @@ router.post("/", verifyAuth, async (req, res) => {
 
       // Update sizeInventory
       sizeInventoryItem.quantity -= item.quantity;
-      suit.stock = suit.sizeInventory.reduce(
-        (sum, si) => sum + si.quantity,
-        0
-      );
+      suit.stock = suit.sizeInventory.reduce((sum, si) => sum + si.quantity, 0);
       suitUpdates.push(suit);
     }
 
@@ -69,7 +67,11 @@ router.post("/", verifyAuth, async (req, res) => {
 
     // Create order
     const userRecord = await admin.auth().getUser(userId);
-    const userDoc = await admin.firestore().collection("pendingUsers").doc(userId).get();
+    const userDoc = await admin
+      .firestore()
+      .collection("pendingUsers")
+      .doc(userId)
+      .get();
     const userData = userDoc.exists ? userDoc.data() : {};
 
     const order = new Order({
@@ -97,7 +99,9 @@ router.post("/", verifyAuth, async (req, res) => {
       .populate("items.suit")
       .exec();
 
-    res.status(201).json({ message: "Order created successfully", order: populatedOrder });
+    res
+      .status(201)
+      .json({ message: "Order created successfully", order: populatedOrder });
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
@@ -121,40 +125,52 @@ router.get("/", verifyAuth, verifyAdmin, async (req, res) => {
 });
 
 // GET picking list PDF (admin only)
-router.get("/:orderId/picking-list", verifyAuth, verifyAdmin, async (req, res) => {
-  try {
-    const order = await Order.findById(req.params.orderId)
-      .populate("items.suit")
-      .exec();
-    if (!order) {
-      return res.status(404).json({ message: "Order not found" });
-    }
+router.get(
+  "/:orderId/picking-list",
+  verifyAuth,
+  verifyAdmin,
+  async (req, res) => {
+    try {
+      const order = await Order.findById(req.params.orderId)
+        .populate("items.suit")
+        .exec();
+      if (!order) {
+        return res.status(404).json({ message: "Order not found" });
+      }
 
-    const doc = new pdfkit();
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `attachment; filename=picking_list_${order._id}.pdf`);
-    doc.pipe(res);
-
-    doc.fontSize(16).text(`Picking List - Order ${order._id}`, { align: "center" });
-    doc.moveDown();
-    doc.fontSize(12).text(`Customer: ${order.user.email}`);
-    doc.text(`Company: ${order.user.companyName || "N/A"}`);
-    doc.text(`Ordered At: ${new Date(order.createdAt).toLocaleString()}`);
-    doc.moveDown();
-
-    doc.text("Items:", { underline: true });
-    order.items.forEach((item, index) => {
-      doc.text(
-        `${index + 1}. ${item.suit.name} (Style: ${item.suit.style}, Size: ${item.size}, Quantity: ${item.quantity})`
+      const doc = new pdfkit();
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename=picking_list_${order._id}.pdf`
       );
-    });
+      doc.pipe(res);
 
-    doc.end();
-  } catch (error) {
-    console.error("PDF generation error:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
+      doc
+        .fontSize(16)
+        .text(`Picking List - Order ${order._id}`, { align: "center" });
+      doc.moveDown();
+      doc.fontSize(12).text(`Customer: ${order.user.email}`);
+      doc.text(`Company: ${order.user.companyName || "N/A"}`);
+      doc.text(`Ordered At: ${new Date(order.createdAt).toLocaleString()}`);
+      doc.moveDown();
+
+      doc.text("Items:", { underline: true });
+      order.items.forEach((item, index) => {
+        doc.text(
+          `${index + 1}. ${item.suit.name} (Style: ${item.suit.style}, Size: ${
+            item.size
+          }, Quantity: ${item.quantity})`
+        );
+      });
+
+      doc.end();
+    } catch (error) {
+      console.error("PDF generation error:", error);
+      res.status(500).json({ message: "Server error", error: error.message });
+    }
   }
-});
+);
 
 // PATCH approve order (admin only)
 router.patch("/:orderId/approve", verifyAuth, verifyAdmin, async (req, res) => {
@@ -166,7 +182,9 @@ router.patch("/:orderId/approve", verifyAuth, verifyAdmin, async (req, res) => {
       return res.status(404).json({ message: "Order not found" });
     }
     if (order.status !== "pending") {
-      return res.status(400).json({ message: "Order is not in pending status" });
+      return res
+        .status(400)
+        .json({ message: "Order is not in pending status" });
     }
 
     order.status = "confirmed";
@@ -180,7 +198,9 @@ router.patch("/:orderId/approve", verifyAuth, verifyAdmin, async (req, res) => {
       html: `
         <h2>Order Confirmation</h2>
         <p>Dear ${order.user.displayName || "Customer"},</p>
-        <p>Your order (ID: ${order._id}) has been approved and is now being processed.</p>
+        <p>Your order (ID: ${
+          order._id
+        }) has been approved and is now being processed.</p>
         <h3>Order Details:</h3>
         <ul>
           ${order.items
@@ -221,7 +241,9 @@ router.delete("/:orderId/reject", verifyAuth, verifyAdmin, async (req, res) => {
     if (order.status !== "pending") {
       await session.abortTransaction();
       session.endSession();
-      return res.status(400).json({ message: "Order is not in pending status" });
+      return res
+        .status(400)
+        .json({ message: "Order is not in pending status" });
     }
 
     // Restore stock
@@ -238,10 +260,7 @@ router.delete("/:orderId/reject", verifyAuth, verifyAdmin, async (req, res) => {
       if (sizeInventoryItem) {
         sizeInventoryItem.quantity += item.quantity;
       }
-      suit.stock = suit.sizeInventory.reduce(
-        (sum, si) => sum + si.quantity,
-        0
-      );
+      suit.stock = suit.sizeInventory.reduce((sum, si) => sum + si.quantity, 0);
       await suit.save({ session });
     }
 

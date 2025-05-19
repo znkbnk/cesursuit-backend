@@ -23,6 +23,8 @@ const upload = multer({
 });
 
 // GET suits with filters, sorting, and pagination
+// In your suits route (GET /suits)
+// GET suits with filters, sorting, and pagination
 router.get("/", async (req, res) => {
   try {
     const {
@@ -35,9 +37,14 @@ router.get("/", async (req, res) => {
       limit = 9,
     } = req.query;
 
+    // Convert and validate pagination parameters
+    const pageNum = Math.max(1, parseInt(page)) || 1;
+    const limitNum = Math.min(parseInt(limit) || 9, 1000);
+    const skip = (pageNum - 1) * limitNum;
+
     // Build query
     const query = {};
-    if (fit) query.fit = { $regex: fit, $options: "i" };
+    if (fit && fit !== "all") query.fit = fit;
     if (style) query.style = style;
     if (minPrice || maxPrice) {
       query.price = {};
@@ -45,28 +52,51 @@ router.get("/", async (req, res) => {
       if (maxPrice) query.price.$lte = Number(maxPrice);
     }
 
-    // Sorting
-    let sortOption = {};
-    if (sort === "price-asc") sortOption.price = 1;
-    else if (sort === "price-desc") sortOption.price = -1;
-    else if (sort === "name-asc") sortOption.name = 1;
+    // Only apply sorting if limit is low or sort is explicitly requested
+    let sortOption = null;
+    if (limitNum <= 100 && sort) {
+      if (sort === "price-asc") sortOption = { price: 1 };
+      else if (sort === "price-desc") sortOption = { price: -1 };
+      else if (sort === "name-asc") sortOption = { name: 1 };
+    }
 
-    // Pagination
-    const skip = (page - 1) * limit;
-    const suits = await Suit.find(query)
-      .sort(sortOption)
-      .skip(skip)
-      .limit(Number(limit));
+    // Execute query
+    const suitsQuery = Suit.find(query).allowDiskUse(true);
+    if (sortOption) {
+      suitsQuery.sort(sortOption);
+    }
 
-    const total = await Suit.countDocuments(query);
+    const [total, suits] = await Promise.all([
+      Suit.countDocuments(query),
+      suitsQuery.skip(skip).limit(limitNum).lean(),
+    ]);
+
+    const totalPages = Math.ceil(total / limitNum);
+
+    if (pageNum > totalPages && totalPages > 0) {
+      return res.json({
+        suits: [],
+        totalPages,
+        currentPage: pageNum,
+      });
+    }
 
     res.json({
       suits,
-      totalPages: Math.ceil(total / limit),
-      currentPage: Number(page),
+      totalPages,
+      currentPage: pageNum,
     });
   } catch (error) {
-    res.status(500).json({ message: "Server error" });
+    console.error("Error fetching suits:", {
+      error: error.message,
+      stack: error.stack,
+      query: req.query,
+      timestamp: new Date().toISOString(),
+    });
+    res.status(500).json({
+      message: "Server error",
+      error: error.message,
+    });
   }
 });
 
