@@ -7,6 +7,7 @@ const nodemailer = require("nodemailer");
 const pdfkit = require("pdfkit");
 const mongoose = require("mongoose");
 const { verifyAuth, verifyAdmin } = require("../middleware/auth");
+const PDFDocument = require("pdfkit");
 
 // Email transporter setup
 const transporter = nodemailer.createTransport({
@@ -120,6 +121,73 @@ router.get("/", verifyAuth, verifyAdmin, async (req, res) => {
     res.status(200).json(orders);
   } catch (error) {
     console.error("Fetch orders error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
+router.get("/report", verifyAuth, verifyAdmin, async (req, res) => {
+  try {
+    // Fetch all orders
+    const orders = await Order.find()
+      .populate("items.suit")
+      .sort({ createdAt: -1 })
+      .exec();
+
+    if (!orders || orders.length === 0) {
+      return res.status(404).json({ message: "No orders found" });
+    }
+
+    // Set response headers for PDF
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=orders_report.pdf`
+    );
+
+    // Create PDF document
+    const doc = new PDFDocument();
+    doc.pipe(res);
+
+    // Add title
+    doc.fontSize(16).text("All Orders Report", { align: "center" });
+    doc.moveDown(2);
+
+    // Iterate through orders
+    orders.forEach((order, index) => {
+      // Order header
+      doc
+        .fontSize(12)
+        .text(`Order ${index + 1}: ${order._id}`, { underline: true });
+      doc.text(`Customer: ${order.user.email}`);
+      doc.text(`Company: ${order.user.companyName || "N/A"}`);
+      doc.text(`Ordered At: ${new Date(order.createdAt).toLocaleString()}`);
+      doc.text(`Status: ${order.status || "Pending"}`);
+      doc.text(
+        `Total (£): ${order.items
+          .reduce(
+            (sum, item) => sum + (item.suit?.price || 0) * (item.quantity || 0),
+            0
+          )
+          .toFixed(2)}`
+      );
+      doc.moveDown();
+
+      // List items
+      doc.text("Items:", { underline: true });
+      order.items.forEach((item, itemIndex) => {
+        doc.text(
+          `${itemIndex + 1}. ${item.suit?.name || "N/A"} (Style: ${
+            item.suit?.style || "N/A"
+          }, Size: ${item.size}, Quantity: ${item.quantity})`
+        );
+      });
+      doc.moveDown(2);
+    });
+
+    // Finalize PDF
+    doc.end();
+  } catch (error) {
+    console.error("PDF report generation error:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 });

@@ -23,8 +23,6 @@ const upload = multer({
 });
 
 // GET suits with filters, sorting, and pagination
-// In your suits route (GET /suits)
-// GET suits with filters, sorting, and pagination
 router.get("/", async (req, res) => {
   try {
     const {
@@ -266,7 +264,6 @@ router.post(
   }
 );
 
-// PATCH update suit sizeInventory and stock (admin only)
 // PATCH update suit sizeInventory and stock (admin only)
 router.patch("/:id", verifyAuth, verifyAdmin, async (req, res) => {
   try {
