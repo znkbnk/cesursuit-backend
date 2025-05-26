@@ -15,37 +15,23 @@ connectDB();
 
 // Middleware
 const allowedOrigins = [
-  ...(process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(",") : []),
-  "https://cesursuits.netlify.app",
+  process.env.FRONTEND_URL,
   "https://cesursuits.co.uk",
   "https://www.cesursuits.co.uk",
-  "http://localhost:5000",
+  "http://localhost:5001",
   "http://localhost:8080",
-  "http://localhost:3000",
-  "https://cesursuits-5b0aab475292.herokuapp.com",
-  "https://us-central1-cesur-suits.cloudfunctions.net/testAuth",
+
 ].filter(Boolean);
 
 app.use(
   cors({
-    origin: (origin, callback) => {
-      console.log("Request Origin:", origin); // Log for debugging
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
+    origin: allowedOrigins,
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
-// Handle preflight requests
-app.options("*", cors());
-
-// Parse JSON bodies
 app.use(express.json());
 
 // Serve static files from Uploads directory
