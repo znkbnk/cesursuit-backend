@@ -4,10 +4,8 @@ const Order = require("../models/Order");
 const Suit = require("../models/Suit");
 const admin = require("firebase-admin");
 const nodemailer = require("nodemailer");
-const pdfkit = require("pdfkit");
 const mongoose = require("mongoose");
 const { verifyAuth, verifyAdmin } = require("../middleware/auth");
-const PDFDocument = require("pdfkit");
 
 // Email transporter setup
 const transporter = nodemailer.createTransport({
@@ -124,11 +122,6 @@ router.get("/", verifyAuth, verifyAdmin, async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 });
-
-
-
-// GET picking list PDF (admin only)
-
 
 // PATCH approve order (admin only)
 router.patch("/:orderId/approve", verifyAuth, verifyAdmin, async (req, res) => {
