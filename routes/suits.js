@@ -3,15 +3,8 @@ const router = express.Router();
 const Suit = require("../models/Suit");
 const multer = require("multer");
 const { verifyAuth, verifyAdmin } = require("../middleware/auth");
-const sanitizeHtml = require("sanitize-html");
-const sharp = require("sharp");
-const {
-  cache,
-  MAX_CACHE_SIZE,
-  CACHE_DURATION,
-  invalidateCache,
-} = require("../utils/cache"); // Import shared cache
 
+// Configure multer for memory storage
 const storage = multer.memoryStorage();
 const upload = multer({
   storage,
@@ -29,7 +22,9 @@ const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
 });
 
-// GET suits with filters, sorting, pagination, and caching
+// GET suits with filters, sorting, and pagination
+// In your suits route (GET /suits)
+// GET suits with filters, sorting, and pagination
 router.get("/", async (req, res) => {
   try {
     const {
@@ -41,27 +36,6 @@ router.get("/", async (req, res) => {
       page = 1,
       limit = 9,
     } = req.query;
-
-    // Create cache key and check cache
-    const cacheKey = `suits:${JSON.stringify({
-      fit,
-      style,
-      minPrice,
-      maxPrice,
-      sort,
-      page,
-      limit,
-    })}`;
-
-    // Check if result is in cache and not expired
-    if (cache.has(cacheKey)) {
-      const cached = cache.get(cacheKey);
-      if (Date.now() - cached.timestamp < CACHE_DURATION) {
-        console.log(`Cache hit for ${cacheKey}`);
-        return res.json(cached.data);
-      }
-      cache.delete(cacheKey); // Remove expired entry
-    }
 
     // Convert and validate pagination parameters
     const pageNum = Math.max(1, parseInt(page)) || 1;
@@ -99,25 +73,19 @@ router.get("/", async (req, res) => {
 
     const totalPages = Math.ceil(total / limitNum);
 
-    const response = {
-      suits,
-      totalPages,
-      currentPage: pageNum,
-    };
-
     if (pageNum > totalPages && totalPages > 0) {
-      response.suits = [];
-    }
-
-    // Store in cache if under size limit
-    if (cache.size < MAX_CACHE_SIZE) {
-      cache.set(cacheKey, {
-        data: response,
-        timestamp: Date.now(),
+      return res.json({
+        suits: [],
+        totalPages,
+        currentPage: pageNum,
       });
     }
 
-    res.json(response);
+    res.json({
+      suits,
+      totalPages,
+      currentPage: pageNum,
+    });
   } catch (error) {
     console.error("Error fetching suits:", {
       error: error.message,
@@ -168,45 +136,15 @@ router.post(
         isComingSoon,
       } = req.body;
 
-      // Sanitize user inputs
-      const sanitizedName = sanitizeHtml(name, {
-        allowedTags: [],
-        allowedAttributes: {},
-      });
-      const sanitizedSku = sanitizeHtml(sku, {
-        allowedTags: [],
-        allowedAttributes: {},
-      });
-      const sanitizedFit = sanitizeHtml(fit, {
-        allowedTags: [],
-        allowedAttributes: {},
-      });
-      const sanitizedStyle = sanitizeHtml(style, {
-        allowedTags: [],
-        allowedAttributes: {},
-      });
-      const sanitizedDescription = sanitizeHtml(description, {
-        allowedTags: ["p", "br", "strong", "em"],
-        allowedAttributes: {},
-      });
-
       // Basic validation
-      if (
-        !sanitizedName ||
-        !sanitizedSku ||
-        !sanitizedFit ||
-        !sanitizedStyle ||
-        !sanitizedDescription
-      ) {
+      if (!name || !sku || !fit || !style || !description) {
         return res
           .status(400)
-          .json({
-            message: "All required fields must be provided after sanitization",
-          });
+          .json({ message: "All required fields must be provided" });
       }
 
       // Check if SKU is unique
-      const existingSuit = await Suit.findOne({ sku: sanitizedSku });
+      const existingSuit = await Suit.findOne({ sku });
       if (existingSuit) {
         return res.status(400).json({ message: "SKU must be unique" });
       }
@@ -214,45 +152,6 @@ router.post(
       // Validate mainImage
       if (!req.files || !req.files.mainImage || !req.files.mainImage[0]) {
         return res.status(400).json({ message: "Main image is required" });
-      }
-
-      // Validate and process main image with sharp
-      const mainImageFile = req.files.mainImage[0];
-      const isValidMainImage = await sharp(mainImageFile.buffer)
-        .metadata()
-        .then(() => true)
-        .catch(() => false);
-      if (!isValidMainImage) {
-        return res.status(400).json({ message: "Invalid main image file" });
-      }
-
-      // Resize main image to 800px width
-      const resizedMainImage = await sharp(mainImageFile.buffer)
-        .resize({ width: 800, fit: "contain" })
-        .toBuffer();
-
-      // Validate and process secondary images
-      let secondaryImages = [];
-      if (req.files.secondaryImages) {
-        for (const file of req.files.secondaryImages) {
-          const isValidSecondaryImage = await sharp(file.buffer)
-            .metadata()
-            .then(() => true)
-            .catch(() => false);
-          if (!isValidSecondaryImage) {
-            return res
-              .status(400)
-              .json({ message: "Invalid secondary image file" });
-          }
-          const resizedSecondaryImage = await sharp(file.buffer)
-            .resize({ width: 800, fit: "contain" })
-            .toBuffer();
-          secondaryImages.push(
-            `data:${file.mimetype};base64,${resizedSecondaryImage.toString(
-              "base64"
-            )}`
-          );
-        }
       }
 
       const isComingSoonBool = isComingSoon === "true" || isComingSoon === true;
@@ -269,7 +168,7 @@ router.post(
           });
         }
 
-        // Parse and validate sizeInventory
+        // Parse and validate sizeInventory if provided
         let parsedSizeInventory = [];
         if (sizeInventory) {
           try {
@@ -317,6 +216,7 @@ router.post(
           });
         }
       } else {
+        // For Coming Soon products, ensure stock is 0 and sizeInventory is empty
         if (stock && parseInt(stock) !== 0) {
           return res
             .status(400)
@@ -329,17 +229,27 @@ router.post(
         }
       }
 
+      // Convert main image to base64
+      const mainImageFile = req.files.mainImage[0];
       const mainImageBase64 = `data:${
         mainImageFile.mimetype
-      };base64,${resizedMainImage.toString("base64")}`;
+      };base64,${mainImageFile.buffer.toString("base64")}`;
+
+      // Convert secondary images to base64 (if provided)
+      const secondaryImages = req.files.secondaryImages
+        ? req.files.secondaryImages.map(
+            (file) =>
+              `data:${file.mimetype};base64,${file.buffer.toString("base64")}`
+          )
+        : [];
 
       const suit = new Suit({
-        name: sanitizedName,
-        sku: sanitizedSku,
+        name,
+        sku,
         price: isComingSoonBool ? null : parseFloat(price),
-        fit: sanitizedFit,
-        style: sanitizedStyle,
-        description: sanitizedDescription,
+        fit,
+        style,
+        description,
         stock: isComingSoonBool ? 0 : parseInt(stock) || 0,
         image: mainImageBase64,
         images: secondaryImages,
@@ -348,23 +258,21 @@ router.post(
       });
 
       await suit.save();
-
-      // Invalidate cache after creating new suit
-      invalidateCache();
-
       res.status(201).json({ message: "Product added successfully", suit });
     } catch (error) {
       console.error("Error adding product:", error);
-      res.status(500).json({ message: "Server error", error: error.message });
+      res.status(500).json({ message: "Server error" });
     }
   }
 );
 
 // PATCH update suit sizeInventory and stock (admin only)
+// PATCH update suit sizeInventory and stock (admin only)
 router.patch("/:id", verifyAuth, verifyAdmin, async (req, res) => {
   try {
     const { sizeInventory, stock, price, isComingSoon } = req.body;
 
+    // Validate inputs
     if (sizeInventory && !Array.isArray(sizeInventory)) {
       return res
         .status(400)
@@ -374,6 +282,7 @@ router.patch("/:id", verifyAuth, verifyAdmin, async (req, res) => {
     const isComingSoonBool = isComingSoon === "true" || isComingSoon === true;
 
     if (!isComingSoonBool) {
+      // Validate for non-Coming Soon products
       if (
         price === undefined ||
         price === null ||
@@ -406,6 +315,7 @@ router.patch("/:id", verifyAuth, verifyAdmin, async (req, res) => {
         }
       }
     } else {
+      // For Coming Soon products, ensure stock is 0 and sizeInventory is empty
       if (stock && parseInt(stock) !== 0) {
         return res
           .status(400)
@@ -423,6 +333,7 @@ router.patch("/:id", verifyAuth, verifyAdmin, async (req, res) => {
       return res.status(404).json({ message: "Suit not found" });
     }
 
+    // Update fields
     suit.sizeInventory = isComingSoonBool
       ? []
       : sizeInventory || suit.sizeInventory;
@@ -435,9 +346,6 @@ router.patch("/:id", verifyAuth, verifyAdmin, async (req, res) => {
     suit.isComingSoon = isComingSoonBool;
 
     await suit.save({ runValidators: true });
-
-    // Invalidate cache after updating suit
-    invalidateCache();
 
     res.status(200).json({ message: "Suit updated successfully", suit });
   } catch (error) {
@@ -455,10 +363,6 @@ router.delete("/:id", verifyAuth, verifyAdmin, async (req, res) => {
     }
 
     await Suit.deleteOne({ _id: req.params.id });
-
-    // Invalidate cache after deleting suit
-    invalidateCache();
-
     res.status(200).json({ message: "Suit deleted successfully" });
   } catch (error) {
     console.error("Error deleting suit:", error);
