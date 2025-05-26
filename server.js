@@ -15,8 +15,10 @@ connectDB();
 
 // Middleware
 const allowedOrigins = [
-  process.env.FRONTEND_URL,
+  ...(process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(",") : []),
   "https://cesursuits.netlify.app",
+  "https://cesursuits.co.uk",
+  "https://www.cesursuits.co.uk",
   "http://localhost:5000",
   "http://localhost:8080",
   "http://localhost:3000",
@@ -26,13 +28,24 @@ const allowedOrigins = [
 
 app.use(
   cors({
-    origin: allowedOrigins,
+    origin: (origin, callback) => {
+      console.log("Request Origin:", origin); // Log for debugging
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
+// Handle preflight requests
+app.options("*", cors());
+
+// Parse JSON bodies
 app.use(express.json());
 
 // Serve static files from Uploads directory
