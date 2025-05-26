@@ -4,10 +4,9 @@ const Order = require("../models/Order");
 const Suit = require("../models/Suit");
 const admin = require("firebase-admin");
 const nodemailer = require("nodemailer");
-const pdfkit = require("pdfkit");
 const mongoose = require("mongoose");
 const { verifyAuth, verifyAdmin } = require("../middleware/auth");
-const PDFDocument = require("pdfkit");
+const { invalidateCache } = require("../utils/cache"); 
 
 // Email transporter setup
 const transporter = nodemailer.createTransport({
@@ -95,6 +94,9 @@ router.post("/", verifyAuth, async (req, res) => {
     await session.commitTransaction();
     session.endSession();
 
+    // Invalidate cache after stock update
+    invalidateCache();
+
     // Populate order for response
     const populatedOrder = await Order.findById(order._id)
       .populate("items.suit")
@@ -124,11 +126,6 @@ router.get("/", verifyAuth, verifyAdmin, async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 });
-
-
-
-// GET picking list PDF (admin only)
-
 
 // PATCH approve order (admin only)
 router.patch("/:orderId/approve", verifyAuth, verifyAdmin, async (req, res) => {
@@ -235,6 +232,9 @@ router.delete("/:orderId/reject", verifyAuth, verifyAdmin, async (req, res) => {
     await Order.deleteOne({ _id: req.params.orderId }).session(session);
 
     await session.commitTransaction();
+
+    // Invalidate cache after stock restoration
+    invalidateCache();
 
     // Send rejection email
     try {
