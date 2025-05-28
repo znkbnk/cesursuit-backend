@@ -65,10 +65,10 @@ const suitSchema = new mongoose.Schema({
   },
 });
 
-suitSchema.index({ name: 1 }); // For name sorting
-suitSchema.index({ price: 1 }); // For price sorting
-suitSchema.index({ fit: 1 }); // For fit filtering
-suitSchema.index({ style: 1 }); // For style filtering
-suitSchema.index({ isComingSoon: 1 }); // For coming soon filtering
+suitSchema.index({ name: 1 });
+suitSchema.index({ price: 1 });
+suitSchema.index({ fit: 1 });
+suitSchema.index({ style: 1 });
+suitSchema.index({ isComingSoon: 1 });
 
 module.exports = mongoose.model("Suit", suitSchema);

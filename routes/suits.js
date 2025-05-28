@@ -10,7 +10,7 @@ const {
   MAX_CACHE_SIZE,
   CACHE_DURATION,
   invalidateCache,
-} = require("../utils/cache"); // Import shared cache
+} = require("../utils/cache");
 
 const storage = multer.memoryStorage();
 const upload = multer({
@@ -29,7 +29,6 @@ const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
 });
 
-// GET suits with filters, sorting, pagination, and caching
 router.get("/", async (req, res) => {
   try {
     const {
@@ -198,11 +197,9 @@ router.post(
         !sanitizedStyle ||
         !sanitizedDescription
       ) {
-        return res
-          .status(400)
-          .json({
-            message: "All required fields must be provided after sanitization",
-          });
+        return res.status(400).json({
+          message: "All required fields must be provided after sanitization",
+        });
       }
 
       // Check if SKU is unique
