@@ -56,7 +56,6 @@ router.get("/", async (req, res) => {
     if (cache.has(cacheKey)) {
       const cached = cache.get(cacheKey);
       if (Date.now() - cached.timestamp < CACHE_DURATION) {
-        console.log(`Cache hit for ${cacheKey}`);
         return res.json(cached.data);
       }
       cache.delete(cacheKey); // Remove expired entry
@@ -360,8 +359,9 @@ router.post(
 // PATCH update suit sizeInventory and stock (admin only)
 router.patch("/:id", verifyAuth, verifyAdmin, async (req, res) => {
   try {
-    const { sizeInventory, stock, price, isComingSoon } = req.body;
+    const { sizeInventory, stock, price, isComingSoon, description } = req.body;
 
+    // Validate sizeInventory
     if (sizeInventory && !Array.isArray(sizeInventory)) {
       return res
         .status(400)
@@ -370,6 +370,7 @@ router.patch("/:id", verifyAuth, verifyAdmin, async (req, res) => {
 
     const isComingSoonBool = isComingSoon === "true" || isComingSoon === true;
 
+    // Validate price and stock for non-Coming Soon products
     if (!isComingSoonBool) {
       if (
         price === undefined ||
@@ -420,6 +421,7 @@ router.patch("/:id", verifyAuth, verifyAdmin, async (req, res) => {
       return res.status(404).json({ message: "Suit not found" });
     }
 
+    // Update fields
     suit.sizeInventory = isComingSoonBool
       ? []
       : sizeInventory || suit.sizeInventory;
@@ -430,6 +432,12 @@ router.patch("/:id", verifyAuth, verifyAdmin, async (req, res) => {
       : suit.stock;
     suit.price = isComingSoonBool ? null : parseFloat(price);
     suit.isComingSoon = isComingSoonBool;
+    if (description !== undefined) {
+      suit.description = sanitizeHtml(description, {
+        allowedTags: ["p", "br", "strong", "em"],
+        allowedAttributes: {},
+      });
+    }
 
     await suit.save({ runValidators: true });
 
